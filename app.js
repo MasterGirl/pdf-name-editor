@@ -96,7 +96,7 @@ function openViewer(index) {
   renderViewer();
   // focus and select the filename for quick renaming
   setTimeout(() => {
-    try { nameInput.focus(); nameInput.select(); } catch (e) {}
+    try { ameInput.focus(); nameInput.select(); } catch (e) {}
   }, 0);
   updateFileCounter();
 }
@@ -294,7 +294,7 @@ nameInput.addEventListener("input", (e) => {
 function updateGridCaptions() {
   const names = Array.from(document.querySelectorAll(".card .name"));
   names.forEach((el, idx) => {
-    el.textContent = items[idx].name || stripExt(items[idx].file.name);
+    el.textContent = items[idx].name || "(ไม่มีชื่อ)";
   });
 }
 
