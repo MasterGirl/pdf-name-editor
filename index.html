@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Multi Uploader & Preview</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>PDF Multi Uploader & Preview</h1>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label class="modern-upload">
+        <input id="fileInput" type="file" accept="application/pdf" multiple />
+        <span class="upload-icon">📁</span>
+        <span class="upload-text">อัปโหลด PDF หลายไฟล์</span>
+      </label>
+      <button id="downloadBtn" disabled>Download All (เมื่อชื่อครบและไม่ซ้ำ)</button>
+      <div id="notif" class="notif hidden"></div>
+    </section>
+
+    <section id="grid" class="grid"></section>
+  </main>
+
+  <div id="viewer" class="viewer hidden" tabindex="-1">
+    <button id="closeBtn" class="close">×</button>
+    <div id="fileCounter" class="file-counter hidden"></div>
+    <div class="viewer-content">
+      <button id="prevBtn" class="nav">‹</button>
+      <div class="viewer-center">
+        <canvas id="viewerCanvas"></canvas>
+        <iframe id="viewerIframe" class="viewer-iframe hidden" aria-hidden="true"></iframe>
+        <div id="viewerLoader" class="viewer-loader hidden">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loader-text">กำลังโหลด PDF ...</div>
+        </div>
+        <div class="meta">
+          <label>ชื่อไฟล์: <input id="nameInput" type="text" /></label>
+          <div id="dupMsg" class="dup hidden"></div>
+          <div class="page-controls">
+            <button id="pagePrev" class="page-btn">◀</button>
+            <input id="pageInput" class="page-input" type="number" min="1" value="1"/>
+            <div id="pageTotal" class="page-total">/ 1</div>
+            <button id="pageNext" class="page-btn">▶</button>
+          </div>
+          <button id="closeInline" class="close-inline">ปิด</button>
+        </div>
+      </div>
+      <button id="nextBtn" class="nav">›</button>
+    </div>
+  </div>
+
+  <script>
+    // pdfjs worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
