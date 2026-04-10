@@ -363,3 +363,69 @@ input[type="file"] {
 }
 /* Viewer zoom cursor hint */
 /* zooming disabled: no special cursor */
+
+/* Upload overlay styles */
+.upload-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  z-index: 200;
+}
+.upload-overlay.hidden { display: none !important; }
+.upload-overlay-card {
+  background: #fff;
+  padding: 20px 22px;
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(2,6,23,0.48);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 320px;
+  max-width: 88vw;
+}
+.upload-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 4px solid rgba(0,0,0,0.08);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+.upload-text { font-weight: 600; color: #111; }
+.upload-progress { flex: 1 1 auto; height: 10px; background: #f1f5f9; border-radius: 999px; overflow: hidden; margin: 0 8px; }
+.upload-bar { width: 0%; height: 100%; background: linear-gradient(90deg,var(--accent),#60a5fa); transition: width 120ms linear; }
+.upload-percent { width: 48px; text-align: right; font-weight: 700; color: #0f172a; }
+.upload-cancel { background: transparent; border: 1px solid #ddd; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+
+/* Processing overlay (for client-side thumbnail generation) */
+.processing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.28);
+  z-index: 210;
+}
+.processing-overlay.hidden { display: none !important; }
+.processing-card {
+  background: rgba(255,255,255,0.98);
+  padding: 16px 18px;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(2,6,23,0.32);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.processing-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 4px solid rgba(37,99,235,0.12);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+.processing-text { font-weight: 600; color: #0f172a; }

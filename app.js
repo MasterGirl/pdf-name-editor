@@ -9,6 +9,11 @@ const downloadBtn = document.getElementById("downloadBtn");
 const closeBtn = document.getElementById("closeBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
+const uploadOverlay = document.getElementById("uploadOverlay");
+const uploadProgressBar = document.getElementById("uploadProgressBar");
+const uploadPercent = document.getElementById("uploadPercent");
+const processingOverlay = document.getElementById("processingOverlay");
+const processingText = document.getElementById("processingText");
 
 let items = []; // {file, name, arrayBuffer, pdf}
 let currentIndex = -1;
@@ -17,6 +22,11 @@ let viewerBaseScale = 1;
 fileInput.addEventListener("change", async (e) => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
+  // show processing overlay while reading files
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังอ่านไฟล์...';
+    processingOverlay.classList.remove('hidden');
+  }
   // revoke any existing object URLs from previous items
   try {
     (items || []).forEach((it) => {
@@ -33,7 +43,28 @@ fileInput.addEventListener("change", async (e) => {
   }
   await renderAllThumbnails();
   checkState();
+  // hide processing overlay (renderAllThumbnails will also hide when done)
+  try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
 });
+
+// Upload logic using XMLHttpRequest to allow upload progress events
+let currentXhr = null;
+
+function showUploadOverlay() {
+  if (!uploadOverlay) return;
+  uploadOverlay.classList.remove('hidden');
+  updateUploadProgress(0);
+}
+
+function hideUploadOverlay() {
+  if (!uploadOverlay) return;
+  uploadOverlay.classList.add('hidden');
+}
+
+function updateUploadProgress(pct) {
+  if (uploadProgressBar) uploadProgressBar.style.width = pct + '%';
+  if (uploadPercent) uploadPercent.textContent = Math.round(pct) + '%';
+}
 
 function stripExt(name) {
   return name.replace(/\.pdf$/i, "");
@@ -42,7 +73,10 @@ function stripExt(name) {
 async function renderAllThumbnails() {
   grid.innerHTML = "";
   // show a quick loader while generating thumbnails
-  showViewerLoader('กำลังสร้างตัวอย่าง...');
+  if (processingOverlay) {
+    if (processingText) processingText.textContent = 'กำลังสร้างตัวอย่าง...';
+    processingOverlay.classList.remove('hidden');
+  }
   await new Promise((r) => setTimeout(r, 50));
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
@@ -87,7 +121,7 @@ async function renderAllThumbnails() {
       ctx.fillText("ไม่สามารถแสดงตัวอย่าง", 10, 20);
     }
   }
-  hideViewerLoader();
+  if (processingOverlay) processingOverlay.classList.add('hidden');
 }
 
 function openViewer(index) {
@@ -180,19 +214,6 @@ async function renderViewer() {
   checkDuplicatesUI();
 }
 
-function updatePageControls(it) {
-  const pageInput = document.getElementById('pageInput');
-  const pageTotal = document.getElementById('pageTotal');
-  const pagePrev = document.getElementById('pagePrev');
-  const pageNext = document.getElementById('pageNext');
-  if (!pageInput || !pageTotal) return;
-  pageInput.value = it.currentPage || 1;
-  pageTotal.textContent = `/ ${it.numPages || 1}`;
-  pageInput.max = it.numPages || 1;
-  // enable/disable page prev/next
-  if ((it.currentPage || 1) <= 1) pagePrev.disabled = true; else pagePrev.disabled = false;
-  if ((it.currentPage || 1) >= (it.numPages || 1)) pageNext.disabled = true; else pageNext.disabled = false;
-}
 
 function updateFileCounter() {
   try {

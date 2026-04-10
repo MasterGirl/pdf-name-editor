@@ -43,16 +43,18 @@
         <div class="meta">
           <label>ชื่อไฟล์: <input id="nameInput" type="text" /></label>
           <div id="dupMsg" class="dup hidden"></div>
-          <div class="page-controls">
-            <button id="pagePrev" class="page-btn">◀</button>
-            <input id="pageInput" class="page-input" type="number" min="1" value="1"/>
-            <div id="pageTotal" class="page-total">/ 1</div>
-            <button id="pageNext" class="page-btn">▶</button>
-          </div>
           <button id="closeInline" class="close-inline">ปิด</button>
         </div>
       </div>
       <button id="nextBtn" class="nav">›</button>
+    </div>
+  </div>
+
+  <!-- Processing overlay shown while generating thumbnails / reading files -->
+  <div id="processingOverlay" class="processing-overlay hidden" aria-hidden="true">
+    <div class="processing-card">
+      <div class="processing-spinner" aria-hidden="true"></div>
+      <div class="processing-text" id="processingText">กำลังประมวลผลไฟล์...</div>
     </div>
   </div>
 
