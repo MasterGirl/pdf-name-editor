@@ -22,6 +22,21 @@ let viewerBaseScale = 1;
 fileInput.addEventListener("change", async (e) => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
+  
+  // Validate file types - only allow PDF files
+  const nonPdfFiles = files.filter(file => {
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type;
+    return !fileName.endsWith('.pdf') && fileType !== 'application/pdf';
+  });
+  
+  if (nonPdfFiles.length > 0) {
+    const nonPdfNames = nonPdfFiles.map(f => f.name).join(', ');
+    alert(`ข้อผิดพลาด: ไม่สามารถอัปโหลดไฟล์ที่ไม่ใช่ PDF ได้\n\nไฟล์ที่ไม่ใช่ PDF: ${nonPdfNames}\n\nกรุณาเลือกเฉพาะไฟล์ PDF เท่านั้น`);
+    e.target.value = ''; // Clear the file input
+    return;
+  }
+  
   // show processing overlay while reading files
   if (processingOverlay) {
     processingText.textContent = 'กำลังอ่านไฟล์...';
@@ -189,7 +204,6 @@ async function renderViewer() {
       // when iframe loads, hide loader and update controls
       viewerIframe.onload = () => {
         hideViewerLoader();
-        updatePageControls(it);
         updateFileCounter();
       };
       viewerIframe.onerror = async () => {

@@ -73,6 +73,7 @@ main {
 input[type="file"] {
   padding: 6px;
 }
+/* Download button styles */
 #downloadBtn {
   background: var(--accent);
   color: #fff;
@@ -81,6 +82,13 @@ input[type="file"] {
   border-radius: 10px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
+  transition: all 0.18s ease;
+}
+#downloadBtn:disabled {
+  background: #e6e6e6;
+  color: #666666;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 .notif {
   padding: 8px 12px;
@@ -154,18 +162,25 @@ input[type="file"] {
 .viewer.hidden {
   display: none;
 }
-.viewer .close {
-  position: absolute;
-  right: 18px;
-  top: 14px;
-  background: #111;
-  color: #fff;
-  border-radius: 18px;
-  width: 36px;
-  height: 36px;
+
+.viewer .close-inline {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
   border: none;
-  font-size: 20px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+  width:fit-content;
+  margin-left: auto;
+}
+.viewer .close-inline:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
 }
 .viewer-content {
   display: flex;
@@ -260,13 +275,6 @@ input[type="file"] {
 .viewer-loader.hidden {
   display: none !important;
 }
-.meta {
-  width: 100%;
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 .meta input {
   width: 100%;
   padding: 10px;
@@ -294,6 +302,11 @@ input[type="file"] {
   box-shadow: 0 6px 18px rgba(220, 38, 38, 0.06);
 }
 .meta {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   position: absolute;
   left: 24px;
   bottom: 24px;
@@ -323,10 +336,11 @@ input[type="file"] {
   padding: 8px;
   border-radius: 6px;
   border: 1px solid #e6edf8;
+  color: #111;
 }
 .page-total {
   font-size: 13px;
-  color: #333;
+  color: #111;
 }
 
 .file-counter {
@@ -341,25 +355,13 @@ input[type="file"] {
   font-size: 13px;
   z-index: 80;
 }
-.close-inline {
-  margin-top: 10px;
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
 
 /* Download button disabled style */
 #downloadBtn:disabled {
   background: #e6e6e6;
-  color: #8a8a8a;
+  color: #666666;
   box-shadow: none;
   cursor: not-allowed;
-}
-#downloadBtn {
-  transition: all 0.18s ease;
 }
 /* Viewer zoom cursor hint */
 /* zooming disabled: no special cursor */
