@@ -14,10 +14,238 @@ const uploadProgressBar = document.getElementById("uploadProgressBar");
 const uploadPercent = document.getElementById("uploadPercent");
 const processingOverlay = document.getElementById("processingOverlay");
 const processingText = document.getElementById("processingText");
+const addFileInput = document.getElementById("addFileInput");
+const pageThumbnailPanel = document.getElementById("pageThumbnailPanel");
+const thumbnailStrip = document.getElementById("thumbnailStrip");
+const openThumbnailPanelBtn = document.getElementById("openThumbnailPanelBtn");
+const closeThumbnailPanelBtn = document.getElementById("closeThumbnailPanel");
+const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+const thumbnailBackdrop = document.getElementById("thumbnailBackdrop");
 
 let items = []; // {file, name, arrayBuffer, pdf}
 let currentIndex = -1;
 let viewerBaseScale = 1;
+
+// Add file input handler for merging PDFs in viewer
+addFileInput.addEventListener("change", async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length || currentIndex < 0) return;
+
+  // Validate file types - only allow PDF files
+  const nonPdfFiles = files.filter(file => {
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type;
+    return !fileName.endsWith('.pdf') && fileType !== 'application/pdf';
+  });
+
+  if (nonPdfFiles.length > 0) {
+    alert(`ข้อผิดพลาด: ไม่สามารถเพิ่มไฟล์ที่ไม่ใช่ PDF ได้\n\nไฟล์ที่ไม่ใช่ PDF: ${nonPdfFiles.map(f => f.name).join(', ')}`);
+    e.target.value = '';
+    return;
+  }
+
+  // Show processing overlay
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังรวมไฟล์...';
+    processingOverlay.classList.remove('hidden');
+  }
+
+  try {
+    const it = items[currentIndex];
+    const { PDFDocument } = PDFLib;
+
+    // Load current PDF
+    const currentPdfDoc = await PDFDocument.load(it.arrayBuffer);
+
+    // Merge all selected files
+    for (const file of files) {
+      const fileArrayBuffer = await file.arrayBuffer();
+      const filePdf = await PDFDocument.load(fileArrayBuffer);
+      const copiedPages = await currentPdfDoc.copyPages(filePdf, filePdf.getPageIndices());
+      copiedPages.forEach(page => currentPdfDoc.addPage(page));
+    }
+
+    // Save merged PDF
+    const mergedPdfBytes = await currentPdfDoc.save();
+    it.arrayBuffer = mergedPdfBytes.buffer;
+
+    // Update PDF.js instance
+    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+    it.numPages = it.pdf.numPages;
+    it.currentPage = 1;
+
+    // Revoke old iframe URL
+    if (it._iframeUrl) {
+      URL.revokeObjectURL(it._iframeUrl);
+      it._iframeUrl = null;
+    }
+
+    // Update viewer
+    renderViewer();
+    updateGridCaptions();
+    checkState();
+
+    alert('รวมไฟล์สำเร็จ!');
+  } catch (err) {
+    console.error('Error merging PDFs:', err);
+    alert('เกิดข้อผิดพลาดในการรวมไฟล์: ' + err.message);
+  } finally {
+    // Hide processing overlay
+    try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
+    e.target.value = '';
+  }
+});
+
+// Open thumbnail panel button handler
+openThumbnailPanelBtn.addEventListener("click", async () => {
+  if (currentIndex < 0) return;
+  await generatePageThumbnails();
+  pageThumbnailPanel.classList.remove("hidden");
+  thumbnailBackdrop.classList.remove("hidden");
+});
+
+// Close thumbnail panel button handler
+closeThumbnailPanelBtn.addEventListener("click", () => {
+  pageThumbnailPanel.classList.add("hidden");
+  thumbnailBackdrop.classList.add("hidden");
+});
+
+// Click on backdrop to close panel
+thumbnailBackdrop.addEventListener("click", () => {
+  pageThumbnailPanel.classList.add("hidden");
+  thumbnailBackdrop.classList.add("hidden");
+});
+
+// Delete selected pages button handler
+deleteSelectedBtn.addEventListener("click", async () => {
+  const selectedThumbnails = thumbnailStrip.querySelectorAll(".page-thumbnail.selected");
+  if (selectedThumbnails.length === 0) return;
+
+  const selectedPages = Array.from(selectedThumbnails).map(th => parseInt(th.dataset.pageNumber)).sort((a, b) => b - a); // Sort descending to delete from end first
+
+  if (!confirm(`ต้องการลบ ${selectedPages.length} หน้า?`)) {
+    return;
+  }
+
+  // Close thumbnail panel
+  pageThumbnailPanel.classList.add("hidden");
+  thumbnailBackdrop.classList.add("hidden");
+
+  // Show processing overlay
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังลบหน้า...';
+    processingOverlay.classList.remove('hidden');
+  }
+
+  try {
+    const it = items[currentIndex];
+    const { PDFDocument } = PDFLib;
+    const pdfDoc = await PDFDocument.load(it.arrayBuffer);
+
+    // Remove pages (0-indexed, so subtract 1)
+    selectedPages.forEach(pageNum => {
+      pdfDoc.removePage(pageNum - 1);
+    });
+
+    // Save modified PDF
+    const modifiedPdfBytes = await pdfDoc.save();
+    it.arrayBuffer = modifiedPdfBytes.buffer;
+
+    // Update PDF.js instance
+    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+    it.numPages = it.pdf.numPages;
+
+    // Adjust current page if needed
+    if (it.currentPage > it.numPages) {
+      it.currentPage = it.numPages;
+    }
+
+    // Revoke old iframe URL
+    if (it._iframeUrl) {
+      URL.revokeObjectURL(it._iframeUrl);
+      it._iframeUrl = null;
+    }
+
+    // Update viewer
+    renderViewer();
+    updateGridCaptions();
+    checkState();
+
+    alert('ลบหน้าสำเร็จ!');
+  } catch (err) {
+    console.error('Error deleting pages:', err);
+    alert('เกิดข้อผิดพลาดในการลบหน้า: ' + err.message);
+  } finally {
+    // Hide processing overlay
+    try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
+  }
+});
+
+// Generate thumbnails for all pages
+async function generatePageThumbnails() {
+  const it = items[currentIndex];
+  if (!it || !it.pdf) return;
+
+  thumbnailStrip.innerHTML = "";
+  
+  // Disable delete selected button initially
+  if (deleteSelectedBtn) {
+    deleteSelectedBtn.disabled = true;
+  }
+  
+  // Show processing overlay
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังสร้างตัวอย่างหน้า...';
+    processingOverlay.classList.remove('hidden');
+  }
+
+  console.log('it',it)
+  try {
+    for (let i = 1; i <= it.numPages; i++) {
+      const page = await it.pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 0.3 });
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const thumbnail = document.createElement("div");
+      thumbnail.className = "page-thumbnail";
+      thumbnail.dataset.pageNumber = i;
+
+      // Make thumbnail clickable to toggle selection
+      thumbnail.addEventListener("click", () => {
+        thumbnail.classList.toggle("selected");
+        updateDeleteSelectedButton();
+      });
+
+      const pageNumber = document.createElement("div");
+      pageNumber.className = "page-thumbnail-number";
+      pageNumber.textContent = i;
+
+      thumbnail.appendChild(canvas);
+      thumbnail.appendChild(pageNumber);
+
+      thumbnailStrip.appendChild(thumbnail);
+    }
+  } catch (err) {
+    console.error('Error generating thumbnails:', err);
+    alert('เกิดข้อผิดพลาดในการสร้างตัวอย่าง: ' + err.message);
+  } finally {
+    // Hide processing overlay
+    try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
+  }
+}
+
+// Update delete selected button state
+function updateDeleteSelectedButton() {
+  const selectedThumbnails = thumbnailStrip.querySelectorAll(".page-thumbnail.selected");
+  if (deleteSelectedBtn) {
+    deleteSelectedBtn.disabled = selectedThumbnails.length === 0;
+  }
+}
 
 fileInput.addEventListener("change", async (e) => {
   const files = Array.from(e.target.files || []);
@@ -50,8 +278,7 @@ fileInput.addEventListener("change", async (e) => {
   } catch (err) {}
   items = [];
   grid.innerHTML = "";
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
+  for (const f of files) {
     const ab = await f.arrayBuffer();
     const item = { file: f, name: stripExt(f.name), arrayBuffer: ab, currentPage: 1, numPages: 1, _iframeUrl: null };
     items.push(item);
@@ -122,6 +349,7 @@ async function renderAllThumbnails() {
     try {
       const pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
       it.pdf = pdf;
+      it.numPages = pdf.numPages;
       const page = await pdf.getPage(1);
       const viewport = page.getViewport({ scale: 0.5 });
       canvas.width = viewport.width;
@@ -152,6 +380,8 @@ function openViewer(index) {
 
 function closeViewer() {
   viewer.classList.add("hidden");
+  // Close thumbnail panel if open
+  try { pageThumbnailPanel.classList.add('hidden'); } catch(e){}
   // stop iframe playback and revoke url for current item to free memory
   try {
     if (viewerIframe) {
@@ -172,6 +402,7 @@ async function renderViewer() {
   const it = items[currentIndex];
   if (!it) return;
   nameInput.value = it.name || "";
+  
   // Prefer native browser preview via iframe (clearer) — fallback to canvas render if iframe fails
   showViewerLoader();
   try {
@@ -215,13 +446,13 @@ async function renderViewer() {
       };
       // set src with page fragment (works in Chrome and many viewers)
       viewerIframe.src = it._iframeUrl + '#page=' + pageIndex;
-    } catch (err) {
+    } catch {
       // fallback
       viewerIframe.classList.add('hidden');
       viewerCanvas.classList.remove('hidden');
       await renderViewerCanvas(it, pageIndex);
     }
-  } catch (err) {
+  } catch {
     // final fallback to canvas
     await renderViewerCanvas(it, it.currentPage || 1);
   }

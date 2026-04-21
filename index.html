@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   </head>
   <body>
     <header>
@@ -48,8 +49,27 @@
           <div class="meta">
             <label>ชื่อไฟล์: <input id="nameInput" type="text" /></label>
             <div id="dupMsg" class="dup hidden"></div>
+            <div class="viewer-actions">
+              <label class="add-file-btn">
+                <input id="addFileInput" type="file" accept="application/pdf" multiple />
+                <span class="add-icon">+</span>
+                <span class="add-text">เพิ่มไฟล์</span>
+              </label>
+            </div>
             <button id="closeInline" class="close-inline">ปิด</button>
           </div>
+          <div id="pageThumbnailPanel" class="page-thumbnail-panel hidden">
+            <div class="thumbnail-header">
+              <span>เลือกหน้าที่ต้องการลบ</span>
+              <div class="thumbnail-actions">
+                <button id="deleteSelectedBtn" class="delete-selected-btn">ลบที่เลือก</button>
+                <button id="closeThumbnailPanel" class="close-thumbnail-btn">×</button>
+              </div>
+            </div>
+            <div id="thumbnailStrip" class="thumbnail-strip"></div>
+          </div>
+          <div id="thumbnailBackdrop" class="thumbnail-backdrop hidden"></div>
+          <button id="openThumbnailPanelBtn" class="open-thumbnail-btn">🗑️ ลบหน้า</button>
         </div>
         <button id="nextBtn" class="nav">›</button>
       </div>
