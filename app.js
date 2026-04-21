@@ -21,6 +21,12 @@ const openThumbnailPanelBtn = document.getElementById("openThumbnailPanelBtn");
 const closeThumbnailPanelBtn = document.getElementById("closeThumbnailPanel");
 const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
 const thumbnailBackdrop = document.getElementById("thumbnailBackdrop");
+const openSortPanelBtn = document.getElementById("openSortPanelBtn");
+const pageSortPanel = document.getElementById("pageSortPanel");
+const sortStrip = document.getElementById("sortStrip");
+const closeSortPanelBtn = document.getElementById("closeSortPanelBtn");
+const saveSortBtn = document.getElementById("saveSortBtn");
+const sortBackdrop = document.getElementById("sortBackdrop");
 
 let items = []; // {file, name, arrayBuffer, pdf}
 let currentIndex = -1;
@@ -114,6 +120,88 @@ closeThumbnailPanelBtn.addEventListener("click", () => {
 thumbnailBackdrop.addEventListener("click", () => {
   pageThumbnailPanel.classList.add("hidden");
   thumbnailBackdrop.classList.add("hidden");
+});
+
+// Open sort panel button handler
+openSortPanelBtn.addEventListener("click", async () => {
+  if (currentIndex < 0) return;
+  await generateSortThumbnails();
+  pageSortPanel.classList.remove("hidden");
+  sortBackdrop.classList.remove("hidden");
+});
+
+// Close sort panel button handler
+closeSortPanelBtn.addEventListener("click", () => {
+  pageSortPanel.classList.add("hidden");
+  sortBackdrop.classList.add("hidden");
+});
+
+// Click on sort backdrop to close panel
+sortBackdrop.addEventListener("click", () => {
+  pageSortPanel.classList.add("hidden");
+  sortBackdrop.classList.add("hidden");
+});
+
+// Save sort button handler - apply page reordering to PDF
+saveSortBtn.addEventListener("click", async () => {
+  const thumbnails = Array.from(sortStrip.querySelectorAll('.sort-thumbnail'));
+  if (thumbnails.length === 0) return;
+
+  // Get the new page order (original page numbers in the new order)
+  const newPageOrder = thumbnails.map(th => parseInt(th.dataset.pageNumber));
+
+  // Close sort panel
+  pageSortPanel.classList.add("hidden");
+  sortBackdrop.classList.add("hidden");
+
+  // Show processing overlay
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังจัดเรียงหน้า...';
+    processingOverlay.classList.remove('hidden');
+  }
+
+  try {
+    const it = items[currentIndex];
+    const { PDFDocument } = PDFLib;
+    const pdfDoc = await PDFDocument.load(it.arrayBuffer);
+
+    // Create a new PDF with pages in the new order
+    const newPdfDoc = await PDFDocument.create();
+
+    // Copy pages in the new order (0-indexed, so subtract 1)
+    for (const originalPageNum of newPageOrder) {
+      const copiedPages = await newPdfDoc.copyPages(pdfDoc, [originalPageNum - 1]);
+      copiedPages.forEach(page => newPdfDoc.addPage(page));
+    }
+
+    // Save the reordered PDF
+    const reorderedPdfBytes = await newPdfDoc.save();
+    it.arrayBuffer = reorderedPdfBytes.buffer;
+
+    // Update PDF.js instance
+    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+    it.numPages = it.pdf.numPages;
+    it.currentPage = 1;
+
+    // Revoke old iframe URL
+    if (it._iframeUrl) {
+      URL.revokeObjectURL(it._iframeUrl);
+      it._iframeUrl = null;
+    }
+
+    // Update viewer
+    renderViewer();
+    updateGridCaptions();
+    checkState();
+
+    alert('จัดเรียงหน้าสำเร็จ!');
+  } catch (err) {
+    console.error('Error reordering pages:', err);
+    alert('เกิดข้อผิดพลาดในการจัดเรียงหน้า: ' + err.message);
+  } finally {
+    // Hide processing overlay
+    try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
+  }
 });
 
 // Delete selected pages button handler
@@ -245,6 +333,134 @@ function updateDeleteSelectedButton() {
   if (deleteSelectedBtn) {
     deleteSelectedBtn.disabled = selectedThumbnails.length === 0;
   }
+}
+
+// Generate sortable thumbnails for all pages
+async function generateSortThumbnails() {
+  const it = items[currentIndex];
+  if (!it || !it.pdf) return;
+
+  sortStrip.innerHTML = "";
+
+  // Show processing overlay
+  if (processingOverlay) {
+    processingText.textContent = 'กำลังสร้างตัวอย่างหน้า...';
+    processingOverlay.classList.remove('hidden');
+  }
+
+  try {
+    for (let i = 1; i <= it.numPages; i++) {
+      const page = await it.pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 0.3 });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const thumbnail = document.createElement("div");
+      thumbnail.className = "sort-thumbnail";
+      thumbnail.dataset.pageNumber = i;
+      thumbnail.draggable = true;
+
+      // Add drag event listeners
+      thumbnail.addEventListener("dragstart", handleDragStart);
+      thumbnail.addEventListener("dragend", handleDragEnd);
+      thumbnail.addEventListener("dragover", handleDragOver);
+      thumbnail.addEventListener("drop", handleDrop);
+      thumbnail.addEventListener("dragenter", handleDragEnter);
+      thumbnail.addEventListener("dragleave", handleDragLeave);
+
+      const pageNumber = document.createElement("div");
+      pageNumber.className = "sort-thumbnail-number";
+      pageNumber.textContent = i;
+
+      thumbnail.appendChild(canvas);
+      thumbnail.appendChild(pageNumber);
+
+      sortStrip.appendChild(thumbnail);
+    }
+  } catch (err) {
+    console.error('Error generating sort thumbnails:', err);
+    alert('เกิดข้อผิดพลาดในการสร้างตัวอย่าง: ' + err.message);
+  } finally {
+    // Hide processing overlay
+    try { if (processingOverlay) processingOverlay.classList.add('hidden'); } catch(e){}
+  }
+}
+
+// Drag and drop handlers
+let draggedItem = null;
+
+function handleDragStart(e) {
+  draggedItem = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+  draggedItem = null;
+  // Remove drag-over class from all thumbnails
+  document.querySelectorAll('.sort-thumbnail').forEach(th => {
+    th.classList.remove('drag-over');
+  });
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function handleDragEnter(e) {
+  if (this !== draggedItem) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+
+  if (draggedItem !== this) {
+    // Get all thumbnails
+    const thumbnails = Array.from(sortStrip.querySelectorAll('.sort-thumbnail'));
+    const draggedIndex = thumbnails.indexOf(draggedItem);
+    const dropIndex = thumbnails.indexOf(this);
+
+    if (draggedIndex < dropIndex) {
+      // Insert after drop target
+      this.parentNode.insertBefore(draggedItem, this.nextSibling);
+    } else {
+      // Insert before drop target
+      this.parentNode.insertBefore(draggedItem, this);
+    }
+
+    // Update page numbers
+    updateSortThumbnailNumbers();
+  }
+
+  return false;
+}
+
+function updateSortThumbnailNumbers() {
+  const thumbnails = sortStrip.querySelectorAll('.sort-thumbnail');
+  thumbnails.forEach((th, index) => {
+    const numberEl = th.querySelector('.sort-thumbnail-number');
+    if (numberEl) {
+      numberEl.textContent = index + 1;
+    }
+  });
 }
 
 fileInput.addEventListener("change", async (e) => {
