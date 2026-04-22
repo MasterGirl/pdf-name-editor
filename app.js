@@ -252,6 +252,13 @@ deleteSelectedBtn.addEventListener("click", async () => {
 
   const selectedPages = Array.from(selectedThumbnails).map(th => parseInt(th.dataset.pageNumber)).sort((a, b) => b - a); // Sort descending to delete from end first
 
+  // Check if deleting all pages
+  const it = items[currentIndex];
+  if (selectedPages.length === it.numPages) {
+    alert('ไม่สามารถลบหน้าทั้งหมดได้ ต้องมีหน้าอย่างน้อย 1 หน้า');
+    return;
+  }
+
   if (!confirm(`ต้องการลบ ${selectedPages.length} หน้า?`)) {
     return;
   }
