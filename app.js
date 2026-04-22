@@ -788,6 +788,44 @@ function updateFileNavButtons() {
   } catch (e) {}
 }
 
+// Control panel drawer toggle
+const controlPanelToggle = document.getElementById('controlPanelToggle');
+const controlPanelContent = document.getElementById('controlPanelContent');
+const drawerIcon = document.getElementById('drawerIcon');
+const toggleText = document.getElementById('toggleText');
+let isControlPanelExpanded = true;
+
+function setControlPanelExpanded(expanded) {
+  isControlPanelExpanded = expanded;
+  if (!controlPanelContent) return;
+  
+  if (expanded) {
+    controlPanelContent.classList.remove('py-0');
+    controlPanelContent.classList.add('py-3');
+    // Use a fixed large max-height to allow content to determine size
+    controlPanelContent.style.maxHeight = '500px';
+    controlPanelContent.style.opacity = '1';
+    if (drawerIcon) drawerIcon.style.transform = 'rotate(0deg)';
+    if (toggleText) toggleText.textContent = 'พับ';
+  } else {
+    controlPanelContent.classList.remove('py-3');
+    controlPanelContent.classList.add('py-0');
+    controlPanelContent.style.maxHeight = '0';
+    controlPanelContent.style.opacity = '0';
+    if (drawerIcon) drawerIcon.style.transform = 'rotate(-90deg)';
+    if (toggleText) toggleText.textContent = 'เปิด';
+  }
+}
+
+if (controlPanelToggle && controlPanelContent) {
+  // Initialize with proper height
+  setControlPanelExpanded(true);
+  
+  controlPanelToggle.addEventListener('click', () => {
+    setControlPanelExpanded(!isControlPanelExpanded);
+  });
+}
+
 // page control handlers
 document.addEventListener('click', (e) => {
   if (e.target && e.target.id === 'pagePrev') {
