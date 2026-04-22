@@ -22,9 +22,25 @@
           <span class="upload-icon">📁</span>
           <span class="upload-text">อัปโหลด PDF หลายไฟล์</span>
         </label>
-        <button id="downloadBtn" disabled>
-          Download All (เมื่อชื่อครบและไม่ซ้ำ)
-        </button>
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: 234px;
+          "
+        >
+          <button id="downloadBtn" disabled>Download</button>
+          <span
+            style="
+              font-size: 12px;
+              color: grey;
+              position: absolute;
+              bottom: -20px;
+            "
+            >(เมื่อชื่อครบและไม่ซ้ำ)</span
+          >
+        </div>
         <div id="notif" class="notif hidden"></div>
       </section>
 
@@ -49,7 +65,7 @@
           <div class="meta">
             <label>ชื่อไฟล์: <input id="nameInput" type="text" /></label>
             <div id="dupMsg" class="dup hidden"></div>
-            <div style="display: flex;">
+            <div style="display: flex">
               <div class="viewer-actions">
                 <label class="add-file-btn">
                   <input
@@ -119,7 +135,8 @@
     </div>
 
     <footer class="footer">
-      <h4>version 1.1 <span style="color: red">beta</span></h4>
+      <h4 style="margin: 0px;">version 1.2 <span style="color: red">beta</span></h4>
+      <span style="font-size: 12px; color: gray;">unresponsive support</span>
     </footer>
     <script>
       // pdfjs worker

@@ -123,6 +123,7 @@ addFileInput.addEventListener("change", async (e) => {
     // Update viewer
     renderViewer();
     updateGridCaptions();
+    await updateGridThumbnail(currentIndex);
     checkState();
 
   } catch (err) {
@@ -232,6 +233,7 @@ saveSortBtn.addEventListener("click", async () => {
     // Update viewer
     renderViewer();
     updateGridCaptions();
+    await updateGridThumbnail(currentIndex);
     checkState();
 
   } catch (err) {
@@ -307,6 +309,7 @@ deleteSelectedBtn.addEventListener("click", async () => {
     // Update viewer
     renderViewer();
     updateGridCaptions();
+    await updateGridThumbnail(currentIndex);
     checkState();
 
   } catch (err) {
@@ -851,6 +854,36 @@ function updateGridCaptions() {
   names.forEach((el, idx) => {
     el.textContent = items[idx].name || "(ไม่มีชื่อ)";
   });
+}
+
+async function updateGridThumbnail(index) {
+  const cards = document.querySelectorAll(".card");
+  if (index < 0 || index >= cards.length) return;
+  
+  const card = cards[index];
+  const canvas = card.querySelector("canvas");
+  if (!canvas) return;
+  
+  const it = items[index];
+  if (!it || !it.arrayBuffer) return;
+  
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+    it.pdf = pdf;
+    it.numPages = pdf.numPages;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 0.5 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
+  } catch (err) {
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#666";
+    ctx.fillText("ไม่สามารถแสดงตัวอย่าง", 10, 20);
+  }
 }
 
 function checkDuplicatesUI() {

@@ -8,6 +8,8 @@
   box-sizing: border-box;
 }
 body {
+  min-width:1120px;
+  overflow-y: auto;
   font-family:
     system-ui,
     -apple-system,
@@ -32,6 +34,7 @@ main {
   gap: 12px;
   align-items: center;
   margin-bottom: 16px;
+  justify-content: space-between;
 }
 .modern-file {
   display: inline-flex;
@@ -75,10 +78,12 @@ input[type="file"] {
 }
 /* Download button styles */
 #downloadBtn {
+  font-size: 14px;
+  font-weight: 600;
   background: var(--accent);
   color: #fff;
   border: none;
-  padding: 8px 12px;
+  padding: 13px 12px;
   border-radius: 10px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
@@ -910,9 +915,11 @@ input[type="file"] {
 }
 .footer {
   display: flex;
+  flex-direction:column ;
+  gap:0;
   justify-content: center;
   position: fixed;
-  bottom: 0;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   opacity: 0.7;
