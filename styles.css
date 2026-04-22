@@ -167,10 +167,10 @@ input[type="file"] {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #ffffff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 8px 14px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
   transition: all 0.2s ease;
@@ -301,14 +301,19 @@ input[type="file"] {
   border-color: var(--danger) !important;
   box-shadow: 0 6px 18px rgba(220, 38, 38, 0.06);
 }
-.meta {
+.meta:hover {
+  opacity: 70%;
+}
+.meta  {
+  transition: 300ms;
   width: 100%;
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   position: absolute;
-  left: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 24px;
   max-width: 40vw;
   z-index: 70;
@@ -784,7 +789,7 @@ input[type="file"] {
 .file-counter {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: 38px;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
@@ -792,6 +797,7 @@ input[type="file"] {
   border-radius: 999px;
   font-size: 13px;
   z-index: 80;
+  opacity: 70%;
 }
 
 /* Download button disabled style */

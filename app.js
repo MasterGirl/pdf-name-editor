@@ -61,23 +61,57 @@ addFileInput.addEventListener("change", async (e) => {
     const { PDFDocument } = PDFLib;
 
     // Load current PDF
-    const currentPdfDoc = await PDFDocument.load(it.arrayBuffer);
+    let currentPdfDoc;
+    try {
+      currentPdfDoc = await PDFDocument.load(it.arrayBuffer, { ignoreEncryption: true });
+    } catch (loadErr) {
+      throw new Error(`ไฟล์ PDF ปัจจุบันเสียหายหรือไม่ถูกต้อง: ${loadErr.message}`);
+    }
+
+    // Create a new PDF to avoid encryption in output
+    const newPdfDoc = await PDFDocument.create();
+
+    // Copy all pages from current PDF
+    let currentPages;
+    try {
+      currentPages = await newPdfDoc.copyPages(currentPdfDoc, currentPdfDoc.getPageIndices());
+      currentPages.forEach(page => newPdfDoc.addPage(page));
+    } catch (copyErr) {
+      throw new Error(`ไม่สามารถคัดลอกหน้าจากไฟล์ปัจจุบัน "${it.name}": ${copyErr.message}`);
+    }
 
     // Merge all selected files
     for (const file of files) {
       const fileArrayBuffer = await file.arrayBuffer();
-      const filePdf = await PDFDocument.load(fileArrayBuffer);
-      const copiedPages = await currentPdfDoc.copyPages(filePdf, filePdf.getPageIndices());
-      copiedPages.forEach(page => currentPdfDoc.addPage(page));
+      let filePdf;
+      try {
+        filePdf = await PDFDocument.load(fileArrayBuffer, { ignoreEncryption: true });
+      } catch (loadErr) {
+        throw new Error(`ไฟล์ "${file.name}" เสียหายหรือไม่ถูกต้อง: ${loadErr.message}`);
+      }
+      let copiedPages;
+      try {
+        copiedPages = await newPdfDoc.copyPages(filePdf, filePdf.getPageIndices());
+        copiedPages.forEach(page => newPdfDoc.addPage(page));
+      } catch (copyErr) {
+        throw new Error(`ไม่สามารถคัดลอกหน้าจากไฟล์ "${file.name}": ${copyErr.message}`);
+      }
     }
 
-    // Save merged PDF
-    const mergedPdfBytes = await currentPdfDoc.save();
+    // Save merged PDF (new PDF has no encryption)
+    const mergedPdfBytes = await newPdfDoc.save();
     it.arrayBuffer = mergedPdfBytes.buffer;
 
-    // Update PDF.js instance
-    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
-    it.numPages = it.pdf.numPages;
+    // Update PDF.js instance (merged PDF should have encryption removed)
+    try {
+      it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+      it.numPages = it.pdf.numPages;
+    } catch (pdfErr) {
+      // If pdf.js can't load it (e.g., still encrypted), create a minimal PDF object
+      console.warn('pdf.js could not load merged PDF:', pdfErr);
+      it.pdf = null;
+      it.numPages = 1;
+    }
     it.currentPage = 1;
 
     // Revoke old iframe URL
@@ -91,7 +125,6 @@ addFileInput.addEventListener("change", async (e) => {
     updateGridCaptions();
     checkState();
 
-    alert('รวมไฟล์สำเร็จ!');
   } catch (err) {
     console.error('Error merging PDFs:', err);
     alert('เกิดข้อผิดพลาดในการรวมไฟล์: ' + err.message);
@@ -163,7 +196,7 @@ saveSortBtn.addEventListener("click", async () => {
   try {
     const it = items[currentIndex];
     const { PDFDocument } = PDFLib;
-    const pdfDoc = await PDFDocument.load(it.arrayBuffer);
+    const pdfDoc = await PDFDocument.load(it.arrayBuffer, { ignoreEncryption: true });
 
     // Create a new PDF with pages in the new order
     const newPdfDoc = await PDFDocument.create();
@@ -178,9 +211,16 @@ saveSortBtn.addEventListener("click", async () => {
     const reorderedPdfBytes = await newPdfDoc.save();
     it.arrayBuffer = reorderedPdfBytes.buffer;
 
-    // Update PDF.js instance
-    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
-    it.numPages = it.pdf.numPages;
+    // Update PDF.js instance (merged PDF should have encryption removed)
+    try {
+      it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+      it.numPages = it.pdf.numPages;
+    } catch (pdfErr) {
+      // If pdf.js can't load it (e.g., still encrypted), create a minimal PDF object
+      console.warn('pdf.js could not load merged PDF:', pdfErr);
+      it.pdf = null;
+      it.numPages = 1;
+    }
     it.currentPage = 1;
 
     // Revoke old iframe URL
@@ -194,7 +234,6 @@ saveSortBtn.addEventListener("click", async () => {
     updateGridCaptions();
     checkState();
 
-    alert('จัดเรียงหน้าสำเร็จ!');
   } catch (err) {
     console.error('Error reordering pages:', err);
     alert('เกิดข้อผิดพลาดในการจัดเรียงหน้า: ' + err.message);
@@ -228,20 +267,31 @@ deleteSelectedBtn.addEventListener("click", async () => {
   try {
     const it = items[currentIndex];
     const { PDFDocument } = PDFLib;
-    const pdfDoc = await PDFDocument.load(it.arrayBuffer);
+    const pdfDoc = await PDFDocument.load(it.arrayBuffer, { ignoreEncryption: true });
 
-    // Remove pages (0-indexed, so subtract 1)
-    selectedPages.forEach(pageNum => {
-      pdfDoc.removePage(pageNum - 1);
-    });
+    // Create a new PDF to avoid encryption in output
+    const newPdfDoc = await PDFDocument.create();
 
-    // Save modified PDF
-    const modifiedPdfBytes = await pdfDoc.save();
+    // Copy all pages except the ones to be deleted (0-indexed)
+    const allPageIndices = pdfDoc.getPageIndices();
+    const pagesToKeep = allPageIndices.filter(idx => !selectedPages.includes(idx + 1));
+    const copiedPages = await newPdfDoc.copyPages(pdfDoc, pagesToKeep);
+    copiedPages.forEach(page => newPdfDoc.addPage(page));
+
+    // Save modified PDF (new PDF has no encryption)
+    const modifiedPdfBytes = await newPdfDoc.save();
     it.arrayBuffer = modifiedPdfBytes.buffer;
 
-    // Update PDF.js instance
-    it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
-    it.numPages = it.pdf.numPages;
+    // Update PDF.js instance (merged PDF should have encryption removed)
+    try {
+      it.pdf = await pdfjsLib.getDocument({ data: it.arrayBuffer }).promise;
+      it.numPages = it.pdf.numPages;
+    } catch (pdfErr) {
+      // If pdf.js can't load it (e.g., still encrypted), create a minimal PDF object
+      console.warn('pdf.js could not load modified PDF:', pdfErr);
+      it.pdf = null;
+      it.numPages = 1;
+    }
 
     // Adjust current page if needed
     if (it.currentPage > it.numPages) {
@@ -259,7 +309,6 @@ deleteSelectedBtn.addEventListener("click", async () => {
     updateGridCaptions();
     checkState();
 
-    alert('ลบหน้าสำเร็จ!');
   } catch (err) {
     console.error('Error deleting pages:', err);
     alert('เกิดข้อผิดพลาดในการลบหน้า: ' + err.message);
@@ -494,10 +543,34 @@ fileInput.addEventListener("change", async (e) => {
   } catch (err) {}
   items = [];
   grid.innerHTML = "";
+
+  // Validate each PDF file can be loaded AND copied (some files load but fail during copyPages)
+  const corruptedFiles = [];
   for (const f of files) {
     const ab = await f.arrayBuffer();
-    const item = { file: f, name: stripExt(f.name), arrayBuffer: ab, currentPage: 1, numPages: 1, _iframeUrl: null };
-    items.push(item);
+    try {
+      const { PDFDocument } = PDFLib;
+      const pdfDoc = await PDFDocument.load(ab, { ignoreEncryption: true });
+
+      // Try copying a page to detect files that fail during copy operation
+      const testPdf = await PDFDocument.create();
+      const pageIndices = pdfDoc.getPageIndices();
+      if (pageIndices.length > 0) {
+        await testPdf.copyPages(pdfDoc, [pageIndices[0]]);
+      }
+
+      const item = { file: f, name: stripExt(f.name), arrayBuffer: ab, currentPage: 1, numPages: 1, _iframeUrl: null };
+      items.push(item);
+    } catch (loadErr) {
+      corruptedFiles.push(f.name);
+    }
+  }
+
+  if (corruptedFiles.length > 0) {
+    alert(`ข้อผิดพลาด: ไฟล์ PDF ต่อไปนี้เสียหายหรือไม่ถูกต้อง ไม่สามารถใช้งานได้:\n\n${corruptedFiles.join('\n')}\n\nกรุณาตรวจสอบไฟล์และลองใหม่`);
+    e.target.value = '';
+    if (processingOverlay) processingOverlay.classList.add('hidden');
+    return;
   }
   await renderAllThumbnails();
   checkState();
